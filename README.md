@@ -1,6 +1,9 @@
 # PFS_Discord
 Perfect Forward secrecy messaging using Discord.
 
+# How Does It Work ?
+PFS_Discord requires two parties running the same script. Each party/script must have its own discord bot/application token, but the two parties must share the same static salts and keys.
+
 # 1. Installing Dependencies
 
 ## 1. Create a virtual enviroment
@@ -31,6 +34,9 @@ Create a new bot/application in discord developers portal and add it to your ser
 ```
 DISCORD_TOKEN=the_assigned_token
 ```
+> Note:
+>
+> Each party **must have his own DISCORD_TOKEN**. In other words, each party should create a bot and add it to the server in which the communication will happen in.
 ## 2. Check the following Checkboxes
 For the script to function correctly, the following checkboxes must be checked. They can be found in the **Bot** section under the created application.
 1. :heavy_check_mark: **PRESENCE INTENT**
@@ -54,6 +60,9 @@ STATIC_AES_KEY=generated_aes_key
 STATIC_HKDF_SALT=generated_salt
 STATIC_HKDF_SALT_2=generated_salt_2
 ```
+> Note:
+>
+> The above secrets **must be the same** in the `.env` file of both parties.
 If you completed all of the above steps successfully, you must now be able to run the script and send messages.
 
 
