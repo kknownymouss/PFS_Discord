@@ -118,7 +118,7 @@ async def on_message(message):
             print("HANDSHAKE COMPLETED SUCCESSFULLY. SENT AND RECIEVED MESSAGES WILL APPEAR HERE\n------chat history------\n")
 
             # after the handshake is completed, open a new console to allow users to send messages.
-            process = subprocess.Popen([r"..\virtualenv\Scripts\python.exe", "bot_input.py", ec.return_master_runtime_aes_key(), ec.return_partner_public_key()], creationflags=subprocess.CREATE_NEW_CONSOLE, stdout=subprocess.PIPE, encoding='utf-8')
+            process = subprocess.Popen([r".\virtualenv\Scripts\python.exe", "bot_input.py", ec.return_master_runtime_aes_key(), ec.return_partner_public_key()], creationflags=subprocess.CREATE_NEW_CONSOLE, stdout=subprocess.PIPE, encoding='utf-8')
 
             # read from the opened console stdout in a different thread to avoid blocking
             threading.Thread(target=stdout_piping, args=(process, )).start()
@@ -133,7 +133,7 @@ async def on_message(message):
             print("HANDSHAKE COMPLETED SUCCESSFULLY. SENT AND RECIEVED MESSAGES WILL APPEAR HERE\n------chat history------\n")
 
             # after the handshake is completed, open a new console to allow users to send messages.
-            process = subprocess.Popen([r"..\virtualenv\Scripts\python.exe", "bot_input.py", ec.return_master_runtime_aes_key(), ec.return_partner_public_key()], creationflags=subprocess.CREATE_NEW_CONSOLE, stdout=subprocess.PIPE, encoding='utf-8')
+            process = subprocess.Popen([r".\virtualenv\Scripts\python.exe", "bot_input.py", ec.return_master_runtime_aes_key(), ec.return_partner_public_key()], creationflags=subprocess.CREATE_NEW_CONSOLE, stdout=subprocess.PIPE, encoding='utf-8')
 
             # read from the opened console stdout in a different thread to avoid blocking
             threading.Thread(target=stdout_piping, args=(process, )).start()
