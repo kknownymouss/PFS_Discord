@@ -5,6 +5,11 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.Protocol.KDF import HKDF
 from Crypto.Hash import SHA512
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
+from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey, EllipticCurvePublicKeyWithSerialization, EllipticCurvePrivateKey, EllipticCurvePrivateKeyWithSerialization
 import os
 from dotenv import load_dotenv
 
@@ -24,10 +29,10 @@ class Encryption_Class:
         # constant kdf salt for deriving new master AES key after ever message
         self.static_hkdf_salt_2 : str = os.getenv('STATIC_HKDF_SALT_2') 
 
-        # runtime generated RSA key pair
+        # stores runtime generated RSA key pair
         self.own_rsa_key_pair = self.generate_rsa_key_pair(4096) 
 
-        # runtime generated AES key
+        # stores runtime generated AES key
         self.own_runtime_aes_key: str = self.generate_runtime_aes_key() 
 
         # tells whether the user sent his runtime AES key or not yet
@@ -43,6 +48,12 @@ class Encryption_Class:
         # stores RSA the public key of the partner after receiving it
         self.__partner_public_key : str = ""
 
+        # stores the elliptic curve public key of the partner (used to derive shared key with own ec private key)
+        self.__partner_ec_public_key : str = ""
+
+        # stores runtime generated EC key pair (after every message)
+        self.__own_ec_key_pair = ("", "")
+
     
     def generate_rsa_key_pair(self, keysize: int):
         rsa_key_pair = RSA.generate(keysize)
@@ -53,6 +64,25 @@ class Encryption_Class:
 
     def generate_runtime_aes_key(self) -> str:
         return base64.b64encode(get_random_bytes(32)).decode("utf-8")
+    
+
+    def generate_ec_key_pair(self) -> tuple[EllipticCurvePublicKeyWithSerialization, EllipticCurvePrivateKey]:
+        ec_private_key : EllipticCurvePrivateKey = ec.generate_private_key(ec.SECP384R1())
+        ec_public_key : EllipticCurvePublicKey = ec_private_key.public_key()
+        bytes_ec_public_key : bytes = ec_public_key.public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
+        return (base64.b64encode(bytes_ec_public_key).decode("utf-8"), ec_private_key)
+    
+    # derives a final shared elliptic curve key using own private ec key and partner public ec key
+    def derive_ec_shared_key(self, own_ec_private_key: EllipticCurvePrivateKey, partner_ec_public_key: EllipticCurvePublicKeyWithSerialization) -> str:
+        loaded_ec_public_key : EllipticCurvePublicKey = load_der_public_key(base64.b64decode(partner_ec_public_key.encode("utf-8")))
+        bytes_ec_shared_key : bytes = own_ec_private_key.exchange(ec.ECDH(), loaded_ec_public_key)
+        bytes_derived_ec_shared_key : bytes = HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=None,
+            info=b'handshake data',
+        ).derive(bytes_ec_shared_key)
+        return (base64.b64encode(bytes_derived_ec_shared_key).decode("utf-8"))
     
 
     # derives a master runtime AES key from the combination of the runtime AES keys of both partners
@@ -78,6 +108,22 @@ class Encryption_Class:
     
     def return_partner_public_key(self):
         return self.__partner_public_key
+
+
+    # partner elliptic curve public key methods
+    def update_partner_ec_public_key(self, partner_ec_public_key):
+        self.__partner_ec_public_key = partner_ec_public_key
+    
+    def return_partner_ec_public_key(self):
+        return self.__partner_ec_public_key
+    
+
+    # update own elliptic curve key pair
+    def update_own_ec_key_pair(self, key_pair: tuple[EllipticCurvePublicKeyWithSerialization, EllipticCurvePrivateKey]):
+        self.__own_ec_key_pair = key_pair
+
+    def return_own_ec_key_pair(self):
+        return self.__own_ec_key_pair
     
 
     # partner runtime AES key methods
