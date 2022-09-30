@@ -7,7 +7,7 @@ from Crypto.Protocol.KDF import HKDF
 from Crypto.Hash import SHA512
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF as hkdf
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat, load_der_public_key
 from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePublicKey, EllipticCurvePublicKeyWithSerialization, EllipticCurvePrivateKey, EllipticCurvePrivateKeyWithSerialization
 import os
@@ -76,7 +76,7 @@ class Encryption_Class:
     def derive_ec_shared_key(self, own_ec_private_key: EllipticCurvePrivateKey, partner_ec_public_key: EllipticCurvePublicKeyWithSerialization) -> str:
         loaded_ec_public_key : EllipticCurvePublicKey = load_der_public_key(base64.b64decode(partner_ec_public_key.encode("utf-8")))
         bytes_ec_shared_key : bytes = own_ec_private_key.exchange(ec.ECDH(), loaded_ec_public_key)
-        bytes_derived_ec_shared_key : bytes = HKDF(
+        bytes_derived_ec_shared_key : bytes = hkdf(
             algorithm=hashes.SHA256(),
             length=32,
             salt=None,
