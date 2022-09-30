@@ -140,8 +140,8 @@ async def on_message(message):
         
     else:
 
-        # if the message doesn't start with "hs-" or "hs2-" and it wasn't sent by our bot, then it a text message the partner sent
-        if  message.author != client.user and message.content[:3] != "hs-" and message.content[:4] != "hs2-":
+        # if the message doesn't start with "hs-" and doesn't start with "hs2-" also, and it wasn't sent by our bot, then it a text message the partner sent
+        if  message.author != client.user and (message.content[:3] != "hs-" and message.content[:4] != "hs2-"):
 
             # the text message will be double encrypted with both the master runtime AES key and partner's RSA public key
             # decryption_1: the text message will first be decrypted with the master runtime AES key
