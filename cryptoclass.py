@@ -54,6 +54,9 @@ class Encryption_Class:
         # stores runtime generated EC key pair (after every message)
         self.__own_ec_key_pair = ("", "")
 
+        # bool for if own public ec key has been sent
+        self.sent_own_public_ec_key = False
+
     
     def generate_rsa_key_pair(self, keysize: int):
         rsa_key_pair = RSA.generate(keysize)
@@ -111,10 +114,10 @@ class Encryption_Class:
 
 
     # partner elliptic curve public key methods
-    def update_partner_ec_public_key(self, partner_ec_public_key):
+    def update_partner_ec_public_key(self, partner_ec_public_key : EllipticCurvePublicKeyWithSerialization):
         self.__partner_ec_public_key = partner_ec_public_key
     
-    def return_partner_ec_public_key(self):
+    def return_partner_ec_public_key(self) -> EllipticCurvePublicKeyWithSerialization:
         return self.__partner_ec_public_key
     
 
@@ -122,7 +125,7 @@ class Encryption_Class:
     def update_own_ec_key_pair(self, key_pair: tuple[EllipticCurvePublicKeyWithSerialization, EllipticCurvePrivateKey]):
         self.__own_ec_key_pair = key_pair
 
-    def return_own_ec_key_pair(self):
+    def return_own_ec_key_pair(self) -> tuple[EllipticCurvePublicKeyWithSerialization, EllipticCurvePrivateKey]:
         return self.__own_ec_key_pair
     
 

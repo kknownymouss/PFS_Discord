@@ -15,6 +15,7 @@ CHANNEL_ID = os.getenv('CHANNEL_ID')
 intents = discord.Intents.default()
 intents.members= True
 client = discord.Client(intents=intents)
+process = None # the bot_input.py process. needs to be global so it is not only assigned locally
 ec = Encryption_Class()
 
 
@@ -73,6 +74,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    global process
     channel = client.get_channel(int(CHANNEL_ID))
     
     # the message starts with "hs-" whenever it contains an RSA public key encrypyed with static AES key
@@ -137,11 +139,56 @@ async def on_message(message):
 
             # read from the opened console stdout in a different thread to avoid blocking
             threading.Thread(target=stdout_piping, args=(process, )).start()
+    
+
+    # The message will start with hs3- whenever it contains a public elliptic curve key from the partner.
+    # This will happen after every message, and it will be used to derive the shared elliptic curve key
+    # 1- if we haven't sent own public ec key yet then ->
+    #     1- generate own public ec key
+    #     2- share own public ec key
+    # 2- update partner ec key
+    # 3- derive shared ec key
+    # 4- kill process and open a new console with updated runtime ec key
+    elif message.author != client.user and message.content[:4] == "hs3-":
+
+
+        if not ec.sent_own_public_ec_key:
+
+            # generate own ec key pair
+            ec.update_own_ec_key_pair(ec.generate_ec_key_pair())
+
+
+            # share own ec public key
+            await channel.send(f"hs3-{ec.return_own_ec_key_pair()[0]}")
+
         
+        # update partner public ec key
+        partner_ec_public_key : str = message.content[4:]
+        ec.update_partner_ec_public_key(partner_ec_public_key)
+
+        # derive new runtime aes key
+        new_runtime_aes_key : str = ec.derive_ec_shared_key(ec.return_own_ec_key_pair()[1], ec.return_partner_ec_public_key())
+        ec.update_master_runtime_aes_key(new_runtime_aes_key)
+
+        # switch sent ec key back to false after whole operation is done
+        ec.sent_own_public_ec_key = False
+
+        # kill the bot_input process and open a new one to get the new updated key
+        process.kill()
+
+        # after the handshake is completed, open a new console to allow users to send messages.
+        process = subprocess.Popen([r".\venv\Scripts\python.exe", "bot_input.py", ec.return_master_runtime_aes_key(), ec.return_partner_public_key()], creationflags=subprocess.CREATE_NEW_CONSOLE, stdout=subprocess.PIPE, encoding='utf-8')
+
+        # read from the opened console stdout in a different thread to avoid blocking
+        threading.Thread(target=stdout_piping, args=(process, )).start()
+
+
+
+
     else:
 
-        # if the message doesn't start with "hs-" and doesn't start with "hs2-" also, and it wasn't sent by our bot, then it a text message the partner sent
-        if  message.author != client.user and (message.content[:3] != "hs-" and message.content[:4] != "hs2-"):
+        # if the message doesn't start with "hs-" and "hs2-" and hs3- , and it wasn't sent by our bot, then it a text message the partner sent
+        if  message.author != client.user and (message.content[:3] != "hs-" and message.content[:4] != "hs2-") and message.content[:4] != "hs3-":
 
             # the text message will be double encrypted with both the master runtime AES key and partner's RSA public key
             # decryption_1: the text message will first be decrypted with the master runtime AES key
@@ -150,8 +197,14 @@ async def on_message(message):
             text_message_decryption_2 = ec.rsa_decrypt_string(text_message_decryption_1, ec.own_rsa_key_pair[1])
             print("received: " + base64.b64decode(text_message_decryption_2.encode("utf-8")).decode("utf-8"))
 
-            # derive a new master runtime AES key after the message is recieved
-            ec.update_master_runtime_aes_key(ec.derive_new_master_runtime_aes_key(ec.return_master_runtime_aes_key(), ec.static_hkdf_salt_2))
+            # send a message starting with "hs3-" containing own public elliptic curve key ( used to derive a new 
+            # shared ec key after every message )
+            ec.update_own_ec_key_pair(ec.generate_ec_key_pair())
+            await channel.send(f"hs3-{ec.return_own_ec_key_pair()[0]}")
+            ec.sent_own_public_ec_key = True
+
+            
+            
 
 
 
