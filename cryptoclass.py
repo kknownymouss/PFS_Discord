@@ -57,6 +57,17 @@ class Encryption_Class:
         # bool for if own public ec key has been sent
         self.sent_own_public_ec_key = False
 
+        # count number of keys used.
+        self.__number_of_keys_used = 0
+
+        # count number of messages sent
+        self.__number_of_msgs_sent = 0
+
+        # count number of messages received
+        self.__number_of_msgs_received = 0
+
+
+
     
     def generate_rsa_key_pair(self, keysize: int):
         rsa_key_pair = RSA.generate(keysize)
@@ -144,6 +155,27 @@ class Encryption_Class:
     def return_master_runtime_aes_key(self):
         return self.__master_runtime_aes
 
+    # number of keys used methods
+    def increment_number_of_keys_used(self):
+        self.__number_of_keys_used += 1
+    
+    def return_number_of_keys_used(self):
+        return str(self.__number_of_keys_used)
+
+    # messages received/sent methods
+    def increment_number_of_msgs_sent(self):
+        self.__number_of_msgs_sent += 1
+    
+    def return_number_of_msgs_sent(self):
+        return str(self.__number_of_msgs_sent)
+
+    def increment_number_of_msgs_received(self):
+        self.__number_of_msgs_received += 1
+    
+    def return_number_of_msgs_received(self):
+        return str(self.__number_of_msgs_received)
+    
+
 
     # returns the encrypted messages with the nonce in the end, separated by ":" (base64 encoded)
     def aes_encrypt_string(self, message: str, aes_key: str) -> str:
@@ -177,3 +209,12 @@ class Encryption_Class:
         cipher_rsa = PKCS1_OAEP.new(RSA.import_key(bytes_rsa_private_key))
         message = cipher_rsa.decrypt(bytes_encrypted_message)
         return base64.b64encode(message).decode("utf-8")
+    
+
+    # hash using SHA512
+    def hash_sha512(self, message: str) -> str:
+        h = SHA512.new()
+        h.update(str(message).encode("utf-8"))
+        return h.hexdigest()
+
+

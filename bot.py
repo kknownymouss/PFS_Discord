@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from cryptoclass import Encryption_Class
 import subprocess
 import threading
+from tabulate import tabulate
 
 
 # initialization
@@ -18,6 +19,9 @@ client = discord.Client(intents=intents)
 process = None # the bot_input.py process. needs to be global so it is not only assigned locally
 ec = Encryption_Class()
 
+# table constants
+HEADERS = ["MESSAGES SENT", "MESSAGES RECEIVED", "KEYS GENERATED"]
+
 
 def stdout_piping(process):
     while True:
@@ -27,7 +31,11 @@ def stdout_piping(process):
             break
 
         if realtime_output:
-            print("sent: " + realtime_output.strip(), flush=True)
+            print(f"sent: {realtime_output.strip()} (key {ec.hash_sha512(ec.return_number_of_keys_used())[:10]})", flush=True)
+            
+            # to avoid adding an extra sent message (counting exit- as a sent message)
+            if not realtime_output.strip() == "exit-": 
+                ec.increment_number_of_msgs_sent()
 
 
 # event loop
@@ -116,8 +124,9 @@ async def on_message(message):
             # derive the master runtime AES key (the salt is static, found in .env) and update master runtime AES key
             master_runtime_aes_key = ec.derive_master_runtime_aes_key(f"{ec.own_runtime_aes_key}{ec.return_partner_runtime_aes_key()}", ec.static_hkdf_salt)
             ec.update_master_runtime_aes_key(master_runtime_aes_key)
+            ec.increment_number_of_keys_used()
             print("derived master AES key and sent own runtime AES key to partner")
-            print("HANDSHAKE COMPLETED SUCCESSFULLY. SENT AND RECIEVED MESSAGES WILL APPEAR HERE\n------chat history------\n")
+            print("HANDSHAKE COMPLETED SUCCESSFULLY. SENT AND RECIEVED MESSAGES WILL APPEAR HERE\n\n------start of chat history------\n")
 
             # after the handshake is completed, open a new console to allow users to send messages.
             process = subprocess.Popen([r".\venv\Scripts\python.exe", "bot_input.py", ec.return_master_runtime_aes_key(), ec.return_partner_public_key()], creationflags=subprocess.CREATE_NEW_CONSOLE, stdout=subprocess.PIPE, encoding='utf-8')
@@ -131,8 +140,9 @@ async def on_message(message):
             # derive the master runtime AES key (the salt is static, found in .env) and update master runtime AES key
             master_runtime_aes_key = ec.derive_master_runtime_aes_key(f"{ec.return_partner_runtime_aes_key()}{ec.own_runtime_aes_key}", ec.static_hkdf_salt)
             ec.update_master_runtime_aes_key(master_runtime_aes_key)
+            ec.increment_number_of_keys_used()
             print("derived final aes key")
-            print("HANDSHAKE COMPLETED SUCCESSFULLY. SENT AND RECIEVED MESSAGES WILL APPEAR HERE\n------chat history------\n")
+            print("HANDSHAKE COMPLETED SUCCESSFULLY. SENT AND RECIEVED MESSAGES WILL APPEAR HERE\n\n------start of chat history------\n")
 
             # after the handshake is completed, open a new console to allow users to send messages.
             process = subprocess.Popen([r".\venv\Scripts\python.exe", "bot_input.py", ec.return_master_runtime_aes_key(), ec.return_partner_public_key()], creationflags=subprocess.CREATE_NEW_CONSOLE, stdout=subprocess.PIPE, encoding='utf-8')
@@ -169,6 +179,7 @@ async def on_message(message):
         # derive new runtime aes key
         new_runtime_aes_key : str = ec.derive_ec_shared_key(ec.return_own_ec_key_pair()[1], ec.return_partner_ec_public_key())
         ec.update_master_runtime_aes_key(new_runtime_aes_key)
+        ec.increment_number_of_keys_used()
 
         # switch sent ec key back to false after whole operation is done
         ec.sent_own_public_ec_key = False
@@ -183,6 +194,24 @@ async def on_message(message):
         threading.Thread(target=stdout_piping, args=(process, )).start()
 
 
+    # check for exits
+    elif message.content[:5] == "exit-":
+        
+        # kill the process
+        process.kill()
+
+        # close discord bot connection
+        await client.close()
+
+        TABLE = [[
+            ec.return_number_of_msgs_sent(),
+            ec.return_number_of_msgs_received(), 
+            ec.return_number_of_keys_used()
+        ]]
+        
+        print("\n------end of chat history------\n\n")
+        print(tabulate(TABLE, HEADERS, tablefmt="presto"))
+    
 
 
     else:
@@ -195,7 +224,8 @@ async def on_message(message):
             # decryption_2: the result of decryption_1 will be then decrypted with our RSA private key.
             text_message_decryption_1 = ec.aes_decrypt_string(message.content, ec.return_master_runtime_aes_key())
             text_message_decryption_2 = ec.rsa_decrypt_string(text_message_decryption_1, ec.own_rsa_key_pair[1])
-            print("received: " + base64.b64decode(text_message_decryption_2.encode("utf-8")).decode("utf-8"))
+            print(f"received:  {base64.b64decode(text_message_decryption_2.encode('utf-8')).decode('utf-8')} (key {ec.hash_sha512(ec.return_number_of_keys_used())[:10]})")
+            ec.increment_number_of_msgs_received()
 
             # send a message starting with "hs3-" containing own public elliptic curve key ( used to derive a new 
             # shared ec key after every message )

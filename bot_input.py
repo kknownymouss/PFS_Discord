@@ -31,6 +31,14 @@ async def on_ready():
 
         # the printed msg will get piped to the main console.
         print(msg)
+
+        # if message is "exit-" it should be sent unencrypted to tell the bots to close the connection
+        if msg == "exit-":
+            
+            # send the message
+            await channel.send(msg)
+            continue
+
         
         b64_msg = base64.b64encode(msg.encode("utf-8")).decode("utf-8")
 
