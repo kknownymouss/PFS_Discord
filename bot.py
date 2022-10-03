@@ -31,7 +31,7 @@ def stdout_piping(process):
             break
 
         if realtime_output:
-            print(f"sent: {realtime_output.strip()} (key {ec.hash_sha512(ec.return_number_of_keys_used())[:10]})", flush=True)
+            print(f"sent: {realtime_output.strip()} (KEY ID : {ec.hash_sha512(ec.return_number_of_keys_used())[:10]})", flush=True)
             
             # to avoid adding an extra sent message (counting exit- as a sent message)
             if not realtime_output.strip() == "exit-": 
@@ -224,7 +224,7 @@ async def on_message(message):
             # decryption_2: the result of decryption_1 will be then decrypted with our RSA private key.
             text_message_decryption_1 = ec.aes_decrypt_string(message.content, ec.return_master_runtime_aes_key())
             text_message_decryption_2 = ec.rsa_decrypt_string(text_message_decryption_1, ec.own_rsa_key_pair[1])
-            print(f"received:  {base64.b64decode(text_message_decryption_2.encode('utf-8')).decode('utf-8')} (key {ec.hash_sha512(ec.return_number_of_keys_used())[:10]})")
+            print(f"received:  {base64.b64decode(text_message_decryption_2.encode('utf-8')).decode('utf-8')} (KEY ID : {ec.hash_sha512(ec.return_number_of_keys_used())[:10]})")
             ec.increment_number_of_msgs_received()
 
             # send a message starting with "hs3-" containing own public elliptic curve key ( used to derive a new 
